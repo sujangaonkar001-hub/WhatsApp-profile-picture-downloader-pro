@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp OSINT Pro - Webshare Edition</title>
+    <style>
+        :root { --primary: #ff6b6b; --secondary: #6c5ce7; --success: #00d4aa; --bg: #0a0a15; --proxy: #00b894; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', monospace; background: linear-gradient(135deg, var(--bg), #1a1a3a); color: #fff; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        h1 { text-align: center; background: linear-gradient(45deg, var(--primary), #feca57, var(--success)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2.5rem; margin-bottom: 0.5rem; }
+        .subtitle { text-align: center; opacity: 0.8; font-size: 1.1rem; margin-bottom: 2rem; }
+        
+        .input-row { display: flex; gap: 1rem; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; }
+        select, input { padding: 1.2rem; background: rgba(255,255,255,0.08); color: #fff; border: 2px solid #333; border-radius: 12px; font-size: 1.1rem; }
+        select:focus, input:focus { outline: none; border-color: var(--success); box-shadow: 0 0 0 3px rgba(0,212,170,0.2); }
+        input { flex: 1; min-width: 300px; }
+        
+        .controls { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem; }
+        button { padding: 1.2rem 2rem; border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; transition: all 0.3s; font-size: 1rem; min-width: 180px; }
+        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(255,255,255,0.2); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .scan-btn { background: linear-gradient(45deg, var(--secondary), #a29bfe); }
+        .bulk-btn { background: linear-gradient(45deg, var(--primary), #ff8e8e); }
+        .history-btn { background: linear-gradient(45deg, var(--success), #00b894); }
+        .stats-btn { background: linear-gradient(45deg, var(--proxy), #00d4aa); }
+        
+        .dashboard { display: grid; grid-template-columns: 1fr 350px; gap: 2rem; margin: 2rem 0; }
+        @media (max-width: 1024px) { .dashboard { grid-template-columns: 1fr; } }
+        
+        .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
+        .pic-card { background: rgba(255,255,255,0.05); padding: 1.5rem; border-radius: 20px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); text-align: center; transition: all 0.3s; }
+        .pic-card:hover { transform: translateY(-5px); border-color: var(--success); }
+        .phone-number { font-size: 1.3rem; font-weight: bold; margin-bottom: 1rem; word-break: break-all; }
+        .pic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 1rem; margin: 1rem 0; }
+        .profile-pic { width: 100%; height: 120px; border-radius: 12px; object-fit: cover; cursor: pointer; border: 3px solid transparent; transition: all 0.3s; }
+        .profile-pic:hover { border-color: var(--success); transform: scale(1.05); }
+        .private-pic { border-color: var(--secondary) !important; }
+        .private-badge { background: var(--secondary); color: white; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.85rem; font-weight: bold; margin: 0.5rem 0; }
+        .stats-badge { background: var(--success); padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.8rem; margin-left: 0.5rem; }
+        
+        .sidebar { background: rgba(255,255,255,0.03); padding: 1.5rem; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); height: fit-content; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+        .stat-card { background: rgba(255,255,255,0.08); padding: 1.5rem; border-radius: 15px; text-align: center; }
+        .stat-number { font-size: 2rem; font-weight: bold; color: var(--success); }
+        .stat-label { opacity: 0.8; font-size: 0.9rem; margin-top: 0.2rem; }
+        
+        .bulk-input { width: 100%; height: 160px; margin-top: 1rem; resize: vertical; background: rgba(255,255,255,0.05); border: 2px solid #333; border-radius: 12px; padding: 1rem; color: #fff; font-family: monospace; }
+        .status { padding: 1.5rem; border-radius: 15px; margin: 1rem 0; font-weight: bold; font-size: 1.1rem; text-align: center; }
+        .success { background: rgba(0,212,170,0.2); border: 2px solid var(--success); }
+        .error { background: rgba(255,107,107,0.2); border: 2px solid var(--primary); }
+        .proxy-status { background: rgba(0,184,148,0.2); border: 2px solid var(--proxy); }
+        
+        .spinner { width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.2); border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 2rem auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .recent-list { max-height: 300px; overflow-y: auto; }
+        .recent-item { padding: 0.8rem; background: rgba(255,255,255,0.03); margin-bottom: 0.5rem; border-radius: 10px; cursor: pointer; transition: background 0.3s; }
+        .recent-item:hover { background: rgba(255,255,255,0.1); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🕵️‍♂️ WhatsApp OSINT Pro</h1>
+        <p class="subtitle">Webshare Proxy • 90%+ Success • Private Account Bypass • Bulk Scan</p>
+        
+        <div class="input-row">
+            <select id="countryCode">
+                <option value="+91">🇮🇳 +91 India</option>
+                <option value="+1">🇺🇸 +1 USA</option>
+                <option value="+44">🇬🇧 +44 UK</option>
+                <option value="+55">🇧🇷 +55 Brazil</option>
+                <option value="+49">🇩🇪 +49 Germany</option>
+                <option value="+33">🇫🇷 +33 France</option>
+                <option value="+81">🇯🇵 +81 Japan</option>
+            </select>
+            <input type="tel" id="phoneNumber" placeholder="Enter phone number (no +)" maxlength="15">
+        </div>
+        
+        <div class="controls">
+            <button class="scan-btn" onclick="scanSingle()">🔍 Single Scan</button>
+            <button class="bulk-btn" onclick="scanBulk()">⚡ Bulk Scan (25 max)</button>
+            <button class="history-btn" onclick="loadHistory()">📊 History</button>
+            <button class="stats-btn" onclick="loadStats()">📈 Stats</button>
+        </div>
+        
+        <textarea id="bulkInput" class="bulk-input" placeholder="Paste numbers one per line:
++919876543210
++14155552671
++447911123456
++5511999999999"></textarea>
+        
+        <div class="dashboard">
+            <div>
+                <div id="status" class="status proxy-status" style="display:none;">
+                    🔐 Webshare proxy active - 90%+ success rate
+                </div>
+                <div id="results" class="results-grid"></div>
+            </div>
+            <div class="sidebar">
+                <div class="stats-grid" id="stats"></div>
+                <div id="recentScans" class="recent-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let allResults = [];
+        
+        // API helper
+        async function api(endpoint, data = {}) {
+            const response = await fetch(`/api${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            return response.json();
+        }
+        
+        function getFullNumber() {
+            const code = document.getElementById('countryCode').value;
+            const phone = document.getElementById('phoneNumber').value.replace(/\D/g, '');
+            return `${code}${phone}`;
+        }
+        
+        async function scanSingle() {
+            const phone = document.getElementById('phoneNumber').value.trim();
+            if (!phone) return showStatus('Enter phone number', 'error');
+            
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = 'Scanning...';
+            showSpinner('🔍 Proxy scanning private endpoints...');
+            
+            try {
+                const result = await api('/scan', { 
+                    phone, 
+                    country_code: document.getElementById('countryCode').value 
+                });
+                
+                if (result.success) {
+                    displayResults([result]);
+                    showStatus(`✅ Found ${result.pics.length} pics (${result.privateHits} private)`, 'success');
+                    document.getElementById('phoneNumber').value = '';
+                } else {
+                    showStatus(`❌ ${result.error}`, 'error');
+                }
+            } catch (e) {
+                showStatus('Network error', 'error');
+            }
+            
+            btn.disabled = false;
+            btn.textContent = '🔍 Single Scan';
+        }
+        
+        async function scanBulk() {
+            let input = document.getElementById('bulkInput').value.trim();
+            if (!input) return showStatus('Paste numbers first', 'error');
+            
+            const numbers = input.split('\n')
+                .map(line => line.trim())
+                .filter(line => line.match(/[+]?\d/))
+                .map(line => {
+                    const match = line.match(/[+]?(\d{1,4})(\d+)/);
+                    return match ? { phone: match[2], country_code: `+${match[1]}` } : null;
+                })
+                .filter(Boolean)
+                .slice(0, 25);
+            
+            if (numbers.length === 0) return showStatus('No valid numbers', 'error');
+            
+            showSpinner(`⚡ Scanning ${numbers.length} numbers via Webshare...`);
+            
+            const results = await api('/bulk-scan', { numbers });
+            const successful = results.filter(r => r.success);
+            
+            displayResults(successful);
+            showStatus(`✅ Bulk complete: ${successful.length}/${numbers.length} successful`, 'success');
+        }
+        
+        function displayResults(results) {
+            allResults = results;
+            const grid = document.getElementById('results');
+            
+            grid.innerHTML = results.map(result => `
+                <div class="pic-card">
+                    <div class="phone-number">${result.fullNumber || result.phone}</div>
+                    <div class="pic-grid">
+                        ${result.pics?.map(pic => `
+                            <img src="${pic.url}" class="profile-pic ${pic.isPrivate ? 'private-pic' : ''}" 
+                                 title="${pic.endpoint} (${pic.isPrivate ? 'PRIVATE' : 'PUBLIC'})"
+                                 onclick="viewFullImage('${pic.url}', '${result.fullNumber || ''}')">
+                        `).join('') || '<p>No pics found</p>'}
+                    </div>
+                    ${result.privateHits > 0 ? `<div class="private-badge">🔒 ${result.privateHits} PRIVATE HITS</div>` : ''}
+                    ${result.successRate ? `<span class="stats-badge">${result.successRate}% success</span>` : ''}
+                </div>
+            `).join('');
+        }
+        
+        function viewFullImage(url, phone) {
+            const img = document.createElement('img');
+            img.src = url;
+            img.style.maxWidth = '600px';
+            img.style.borderRadius = '20px';
+            img.style.boxShadow = '0 20px 40px rgba(0,0,0,0.5)';
+            
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                background: rgba(0,0,0,0.9); z-index: 9999; display: flex; 
+                align-items: center; justify-content: center; cursor: pointer;
+            `;
+            modal.onclick = () => document.body.removeChild(modal);
+            modal.appendChild(img);
+            document.body.appendChild(modal);
+        }
+        
+        function showSpinner(text) {
+            document.getElementById('results').innerHTML = `
+                <div style="text-align: center; padding: 3rem;">
+                    <div class="spinner"></div>
+                    <p style="margin-top: 1.5rem; font-size: 1.2rem;">${text}</p>
+                </div>
+            `;
+        }
+        
+        function showStatus(msg, type) {
+            const status = document.getElementById('status');
+            status.textContent = msg;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+            setTimeout(() => status.style.display = 'none', 5000);
+        }
+        
+        async function loadHistory() {
+            showSpinner('Loading history...');
+            const history = await fetch('/api/history').then(r => r.json());
+            displayResults(history.slice(0, 10));
+        }
+        
+        async function loadStats() {
+            const stats = await fetch('/api/stats').then(r => r.json());
+            const statsEl = document.getElementById('stats');
+            statsEl.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">${stats.total_scans || 0}</div>
+                    <div class="stat-label">Total Scans</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.total_private || 0}</div>
+                    <div class="stat-label">Private Hits</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.avg_success?.toFixed(1) || 0}%</div>
+                    <div class="stat-label">Avg Success</div>
+                </div>
+            `;
+        }
+        
+        // Input formatting
+        document.getElementById('phoneNumber').addEventListener('input', function() {
+            this.value = this.value.replace(/\D/g, '');
+        });
+        
+        document.getElementById('bulkInput').addEventListener('input', function() {
+            const lines = this.value.split('\n').length - 1;
+            if (lines > 25) {
+                showStatus('Max 25 numbers for bulk scan', 'error');
+            }
+        });
+        
+        // Load stats on start
+        loadStats();
+    </script>
+</body>
+</html>
